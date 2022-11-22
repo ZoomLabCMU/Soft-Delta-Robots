@@ -1,4 +1,4 @@
-#include "delta_trajectory.pb.h"
+ #include "delta_trajectory.pb.h"
 #include "pb_common.h"
 #include "pb.h"
 #include "pb_encode.h"
@@ -9,7 +9,7 @@
 #include<math.h>
 
 #define NUM_MOTORS 12 
-#define MY_ID 16
+#define MY_ID 15
 
 
 //################################## Feather MC and ADC Libraries INIT #####################3

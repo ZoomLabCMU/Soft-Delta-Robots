@@ -13,7 +13,7 @@ import telnetlib
 import socket
 
 # host = "192.168.1.31"
-robot_no = 16
+robot_no = 15
 port = 80
 timeout = 100
 BUFFER_SIZE = 20

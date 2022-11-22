@@ -8,7 +8,7 @@
 float p = 450.0;
 float i_pid = 0;
 float d = 0.2;
-float p_feed_forward = 150;
+float p_feed_forward = 400;
 
 float position_threshold = 0.00045;
 //############################# READ / WRITE JOINT POSITIONS #######################################3
@@ -60,8 +60,9 @@ void writeJointPositions(){
       
 //      float pid = p * joint_errors[i] + i_pid * total_joint_errors[i] + d * (joint_errors[i] - last_joint_err/ors[i]/time_elapsed);
       float pid = p * joint_errors[i] + i_pid * total_joint_errors[i] + d * (joint_errors[i] - last_joint_errors[i])/time_elapsed;
+      float pid_smol = 0;
       if(traj_iter<19){
-        pid += p_feed_forward * (joint_positions[i] - trajectory[traj_iter+1][i]);
+        pid_smol = p_feed_forward * (joint_positions[i] - trajectory[traj_iter+1][i]);
       }
 
 //##########################################################################
@@ -77,12 +78,24 @@ void writeJointPositions(){
         motors[i]->setSpeed(motor_speed);
         motors[i]->run(FORWARD);
         total_joint_errors[i] += joint_errors[i];
-      }else{
+      }else if(pid_smol == 0){
         last_joint_errors[i] = 0;
         reached_point &= true;
         motors[i]->setSpeed(0);
         motors[i]->run(RELEASE);
         total_joint_errors[i] = 0.0;
+      }else{
+        reached_point &= true;
+        last_joint_errors[i] = 0;
+        total_joint_errors[i] = 0.0;
+        int motor_speed = (int)(min(max(-1.0, pid_smol), 0.0) * -255.0);
+        motors[i]->setSpeed(motor_speed);
+        if(motor_speed>0){
+          motors[i]->run(BACKWARD);
+        }
+        else{
+          motors[i]->run(FORWARD);
+        }
       }
 
 //      ###################################################
