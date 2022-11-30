@@ -5,7 +5,9 @@
 #include <math.h>
 
 // 100mm per 1650 bits (3.3V/4.096V)*2^11 (range is +- 4.096V with 1 gain)
-#define ADC2M 0.0000606060606 
+#define ADC2M 0.0000606060606 //ADC reading to pos in [m]
+#define CMD2VEL 0.0000920 // Motor command val to vel in [m/s]
+#define VEL2CMD 10869.5652 // vel [m/s] to motor command val [x/+-255]
 
 myServoController::myServoController(Adafruit_DCMotor* motors[NUM_MOTORS], 
                                      Adafruit_ADS1015* adcs[NUM_MOTORS], 
@@ -26,9 +28,35 @@ void myServoController::init_controller() {
     _motors[i]->run(RELEASE);
     _joint_velocities[i] = 0;
   }
+  reset_joints();
+  read_joint_positions(); 
+}
+
+void myServoController::reset_joints() {
+  float tol = 0.005; //5mm reasonable for resetting
   read_joint_positions();
-  // IMPLEMENT: Set all joints to 0
-  read_joint_positions();
+  // Temprorary method to set joints to 0 at initialization
+  /*
+  float qCmd[NUM_MOTORS] = {0.000, 0.000, 0.000, 
+                            0.000, 0.000, 0.000, 
+                            0.000, 0.000, 0.000, 
+                            0.000, 0.000, 0.000};
+  cmdPos(qCmd);
+
+  // Dont really like the bang into 0.0, add a ramp down later
+  for (int i=0; i<NUM_MOTORS; i++) {
+    _refCmd[i] = -255;
+  }
+  while (_joint_positions[0] > tol) {
+    driveController();
+    delay(50);
+  }
+  */
+  float xf[NUM_MOTORS] = {0.001, 0.001, 0.001,
+                          0.001, 0.001, 0.001,
+                          0.001, 0.001, 0.001,
+                          0.001, 0.001, 0.001};
+  ramp2pos(xf, 25.0, 12.5);
 }
 
 void myServoController::read_joint_positions() {
@@ -39,7 +67,6 @@ void myServoController::read_joint_positions() {
 }
 
 void myServoController::update_state() {
-  // Implement me!
   for (int i=0; i<NUM_MOTORS; i++) {
     _prev_joint_positions[i] = _joint_positions[i];
   }
@@ -54,19 +81,16 @@ void myServoController::update_state() {
 }
 
 void myServoController::print_state() {
-  //Serial.println("Joint Positions [mm]");
-  //for (int i=0; i<NUM_MOTORS; i++) {
-  //  Serial.print(_joint_positions[i]*1000); Serial.print('\t');
-  //}
-  //Serial.println();
-  
-  //Serial.println("Motor Commands (x/255)");
-  //for (int i=0; i<NUM_MOTORS; i++) {
-  //  Serial.print(_motorCmd[i]); Serial.print('\t');
-  //}
-  //Serial.println();
-  Serial.print(_joint_positions[0]*1000); Serial.print('\t');
-  Serial.println(_joint_positionsCmd[0]*1000);
+  Serial.println("Joint Positions");
+  for (int i=0; i<NUM_MOTORS; i++) {
+    Serial.print(1000*_joint_positions[i]); Serial.print('\t');
+  }
+  Serial.println();
+  Serial.println("Joint Velocities");
+  for (int i=0; i<NUM_MOTORS; i++) {
+    Serial.print(1000*_joint_velocities[i]); Serial.print('\t');
+  }
+  Serial.println();
 }
 
 void myServoController::cmdPos(float qCmd[]) {
@@ -78,6 +102,7 @@ void myServoController::cmdPos(float qCmd[]) {
 void myServoController::cmdVel(float q_dotCmd[]) {
   for (int i=0; i<NUM_MOTORS; i++){
     _joint_velocitiesCmd[i] = q_dotCmd[i];
+    _refCmd[i] = q_dotCmd[i] * VEL2CMD;
   }
 }
 
@@ -97,10 +122,13 @@ void myServoController::positional_PID(float PID_Cmd[NUM_MOTORS]) {
 void myServoController::send_motorCmd() {
   for (int i=0; i<NUM_MOTORS; i++) {
     int motor_cmd_val = _motorCmd[i];
-    if (motor_cmd_val > 0) {
+    motor_cmd_val = min(max(motor_cmd_val, -255), 255); // Clip to safe bounds
+    if (motor_cmd_val > 20) {
       _motors[i]->run(FORWARD);
-    } else{
+    } else if (motor_cmd_val < 20){
       _motors[i]->run(BACKWARD);
+    } else {
+      _motors[i]->run(RELEASE);
     }
     _motors[i]->setSpeed((uint8_t)(abs(motor_cmd_val)));
   }
@@ -113,8 +141,130 @@ void myServoController::driveController() {
   positional_PID(PID_Cmd);
 
   for (int i=0; i<NUM_MOTORS; i++) {
-    _motorCmd[i] = (int)(1.0 * PID_Cmd[i]);
+    _motorCmd[i] = (int)(_refCmd[i] + _lambda_cmdPos*PID_Cmd[i]);
   }
 
   send_motorCmd();
+}
+
+//********************* Trajectories ******************************//
+void myServoController::ramp_pos(float t, float qCmd[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float v[NUM_MOTORS], float amax_ref) {
+  // Modify qCmd with the x(t) values of a ramp traj
+  float vmax;
+  float amax;
+  
+  for (int i=0; i<NUM_MOTORS; i++) {
+    float delta_x = xf[i] - x0[i];
+    if (delta_x < 0) {
+      vmax = -v[i];
+      amax = -amax_ref;
+    } else {
+      vmax = v[i];
+      amax = amax_ref;
+    }
+    float tr = min(delta_x/vmax, vmax/amax);
+    float tm = max(0, delta_x/vmax - vmax/amax);
+    // Piece wise integration
+    if (t < tr) {
+      qCmd[i] = x0[i] + 0.5*amax*pow(t,2);
+    } else if (tr <= t & t < tr + tm) {
+      qCmd[i] = x0[i] + (0.5*amax*pow(tr,2)) + vmax*(t-tr);
+    } else if (tr + tm <= t & t < 2*tr + tm) {
+      qCmd[i] = x0[i] + (0.5*amax*pow(tr,2)) + (vmax*tm) + (vmax*(t-tm-tr) - 0.5*amax*pow(t-tm-tr,2));
+    } else {
+      qCmd[i] = xf[i];
+    }
+  }
+}
+
+void myServoController::ramp_vel(float t, float q_dotCmd[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float v[NUM_MOTORS], float amax_ref) {
+  // Modify q_dotCmd with the v(t) values of a ramp traj
+  float vmax;
+  float amax;
+  
+  for (int i=0; i<NUM_MOTORS; i++) {
+    float delta_x = xf[i] - x0[i];
+    if (delta_x < 0) {
+      vmax = -v[i];
+      amax = -amax_ref;
+    } else {
+      vmax = v[i];
+      amax = amax_ref;
+    }
+    float tr = min(delta_x/vmax, vmax/amax);
+    float tm = max(0, delta_x/vmax - vmax/amax);
+    // Piece wise integration
+    if (t < tr) {
+      q_dotCmd[i] = amax*t;
+    } else if (tr <= t & t < tr + tm) {
+      q_dotCmd[i] = vmax;
+    } else if (tr + tm <= t & t < 2*tr + tm) {
+      q_dotCmd[i] = vmax - amax*(t-tr-tm);
+    } else {
+      q_dotCmd[i] = 0.0;
+    }
+  }
+}
+
+float myServoController::ramp_tf(float tf[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float vmax, float amax) {
+  float tf_max = 0;
+  for (int i=0; i<NUM_MOTORS; i++) {
+    float delta_x = abs(xf[i] - x0[i]);
+    float tr = min(delta_x/vmax, vmax/amax);
+    float tm = max(0, delta_x/vmax - vmax/amax);
+    tf[i] = 2*tr + tm;
+    tf_max = max(tf_max, tf[i]);
+  }
+  return tf_max;
+}
+
+
+void myServoController::ramp2pos(float xf[NUM_MOTORS], float vmax, float amax) {
+  // Blocking function to continuously drive the robot accross a ramp trajectory
+  update_state();
+  float x0[NUM_MOTORS];
+  float tf[NUM_MOTORS];
+  float v[NUM_MOTORS];
+  for (int i=0; i<NUM_MOTORS; i++) {
+    x0[i] = _joint_positions[i];
+  }
+
+  // Scale v such that tm is equal accross all servos
+  // Ramp time shouldn't be an issue??
+  float tf_max = ramp_tf(tf, x0, xf, vmax, amax);
+  for (int i=0; i<NUM_MOTORS; i++) {
+    v[i] = vmax * tf[i]/tf_max;
+  }
+
+  float qCmd[NUM_MOTORS];
+  float q_dotCmd[NUM_MOTORS];
+
+  _traj_t0 = millis()/1000.0;
+  _traj_tf = tf_max;
+  _traj_t = 0;
+
+
+  while (_traj_t < _traj_tf) {
+    _traj_t = (millis()/1000.0) - _traj_t0;
+    
+    ramp_pos(_traj_t, qCmd, x0, xf, v, amax);
+    ramp_vel(_traj_t, q_dotCmd, x0, xf, v, amax);
+
+    
+    cmdPos(qCmd);
+    cmdVel(q_dotCmd);
+    driveController();
+
+    float q = _joint_positions[0];
+    float qq = qCmd[0];
+    float q_dot = _joint_velocities[0];
+    float qq_dot = q_dotCmd[0];
+    
+    Serial.print(1000*q); Serial.print('\t');
+    Serial.print(1000*qq); Serial.print('\t');
+    Serial.print(1000*q_dot); Serial.print('\t');
+    Serial.println(1000*qq_dot);
+    
+    delay(50);
+  }
 }

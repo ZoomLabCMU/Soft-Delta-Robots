@@ -14,10 +14,10 @@ public:
                     Adafruit_ADS1015* adcs[NUM_MOTORS], 
                     int channels[NUM_MOTORS]);
   void init_controller();
+  void reset_joints();
   void cmdPos(float qCmd[]);
   void cmdVel(float q_dotCmd[]);
   void driveController();
-  void update_state();
   void print_state();
 
   // State estimation
@@ -29,6 +29,13 @@ public:
   float _joint_positionsCmd[NUM_MOTORS];
   float _joint_velocitiesCmd[NUM_MOTORS];
   int _motorCmd[NUM_MOTORS];
+
+  // trajectory
+  int _refCmd[NUM_MOTORS];
+  float _traj_t0;
+  float _traj_tf;
+  float _traj_t;
+  void ramp2pos(float xf[NUM_MOTORS], float vmax, float amax);
   
 private:
   // Position
@@ -44,17 +51,24 @@ private:
 
   // cmdPos
   void positional_PID(float PID_Cmd[NUM_MOTORS]);
-
   // Note these constants were determined with error in meters
-  const float _cmdPos_Kp = 10000;
-  const float _cmdPos_Ki = 10;
-  const float _cmdPos_Kd = 100;
+  const float _cmdPos_Kp = 20000;
+  const float _cmdPos_Ki = 100;
+  const float _cmdPos_Kd = 400;
   float _cmdPos_error[NUM_MOTORS];
   float _cmdPos_integral_error[NUM_MOTORS];
   float _cmdPos_derivative_error[NUM_MOTORS];
 
+
   // driveController
+  void update_state();
   void send_motorCmd();
+  const float _lambda_cmdPos = 0.5;
+
+  // trajectory
+  void ramp_pos(float t, float qCmd[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float v[NUM_MOTORS], float amax_ref);
+  void ramp_vel(float t, float q_dotCmd[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float v[NUM_MOTORS], float amax_ref);
+  float ramp_tf(float tf[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float vmax, float amax);
 
   
 };

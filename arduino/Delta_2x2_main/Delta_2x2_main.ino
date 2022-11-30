@@ -78,29 +78,41 @@ void setup() {
   ADC0.setGain(GAIN_ONE);
   
   controller.init_controller();
+
+  Serial.print("q"); Serial.print('\t');
+  Serial.print("qCmd"); Serial.print('\t');
+  Serial.print("q_dot"); Serial.print('\t');
+  Serial.println("q_dotCmd");
 }
 
+/*
 float qCmd[NUM_MOTORS] = {0.000, 0.000, 0.000,
                           0.000, 0.000, 0.000,
                           0.000, 0.000, 0.000,
                           0.000, 0.000, 0.000};
-long t_start = millis();
-int i=0;
+                          
+float q_dotCmd[NUM_MOTORS] = {0.000, 0.000, 0.000,
+                              0.000, 0.000, 0.000,
+                              0.000, 0.000, 0.000,
+                              0.000, 0.000, 0.000};
+*/
+
+float vmax = 20.0/1000.0; // mm/s
+float amax = 10.0/1000.0; // mm/s2
+float x0[NUM_MOTORS] = {0.005, 0.005, 0.005, 
+                        0.005, 0.005, 0.005, 
+                        0.005, 0.005, 0.005, 
+                        0.005, 0.005, 0.005};
+
+float x1[NUM_MOTORS] = {0.050, 0.040, 0.030, 
+                        0.010, 0.010, 0.010,
+                        0.050, 0.060, 0.060, 
+                        0.005, 0.005, 0.005};
+
 
 void loop() {
-  controller.cmdPos(qCmd);
-  
-  controller.driveController();
-  i++;
-  if (i == 10) {
-    i = 0;
-    controller.print_state();
-  }
-
-  float val = 0.050 + 0.040*sin((millis()-t_start)*0.001*2*3.14/20);
-
-  for (int i=0; i<9; i++) {
-    qCmd[i] = val;
-  }
+  controller.ramp2pos(x0, vmax, amax);
+  delay(50);
+  controller.ramp2pos(x1, vmax, amax);
   delay(50);
 }
