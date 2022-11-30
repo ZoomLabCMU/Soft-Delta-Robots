@@ -75,6 +75,7 @@ bool skip_trajectory = false;
 float trajectory[20][NUM_MOTORS];
 int traj_iter = 0;
 bool go = false;
+bool reset_flag = false;
 
 
 myServoController controller(motors, adcs, channels);
@@ -110,8 +111,12 @@ void setup() {
   */
 }
 
+float xmin = 0.005;
+float xmax = 0.095;
+
 
 void loop() {
+  
   recvWithStartEndMarkers();
   if (newData) {
     if (decodeNanopbData() & !skip_trajectory) {
@@ -121,5 +126,8 @@ void loop() {
     ndx = 0;
   }
   executeWaypoints();
-  delay(10);
+  if (traj_iter >= 20 && !reset_flag) {
+    reset();
+    reset_flag = true;
+  }
 }

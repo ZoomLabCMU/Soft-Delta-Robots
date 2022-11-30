@@ -38,7 +38,7 @@ void myServoController::reset_joints() {
                           0.001, 0.001, 0.001,
                           0.001, 0.001, 0.001,
                           0.001, 0.001, 0.001};
-  ramp2pos(xf, 25.0, 12.5);
+  ramp2pos(xf, 25.0/1000.0, 12.5/1000.0);
 }
 
 void myServoController::read_joint_positions() {
@@ -190,10 +190,13 @@ void myServoController::ramp_vel(float t, float q_dotCmd[NUM_MOTORS], float x0[N
 
 float myServoController::ramp_tf(float tf[NUM_MOTORS], float x0[NUM_MOTORS], float xf[NUM_MOTORS], float vmax, float amax) {
   float tf_max = 0;
+  float tr;
+  float tm;
+  float delta_x;
   for (int i=0; i<NUM_MOTORS; i++) {
-    float delta_x = abs(xf[i] - x0[i]);
-    float tr = min(delta_x/vmax, vmax/amax);
-    float tm = max(0, delta_x/vmax - vmax/amax);
+    delta_x = abs(xf[i] - x0[i]);
+    tr = min(delta_x/vmax, vmax/amax);
+    tm = max(0, delta_x/vmax - vmax/amax);
     tf[i] = 2*tr + tm;
     tf_max = max(tf_max, tf[i]);
   }
@@ -242,6 +245,7 @@ void myServoController::ramp2pos(float xf[NUM_MOTORS], float vmax, float amax) {
     float qq = qCmd[0];
     float q_dot = _joint_velocities[0];
     float qq_dot = q_dotCmd[0];
+
     
     Serial.print(1000*q); Serial.print('\t');
     Serial.print(1000*qq); Serial.print('\t');
