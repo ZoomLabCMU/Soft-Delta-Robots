@@ -13,7 +13,7 @@ import telnetlib
 import socket
 
 # host = "192.168.1.31"
-robot_no = 16
+robot_no = 15
 port = 80
 timeout = 100
 BUFFER_SIZE = 20
@@ -48,8 +48,8 @@ def rotate(vector, angle, plot=False):
 if __name__=="__main__":
     # env = control_delta_arrays.DeltaArrayEnv("COM7")
     
-    # wave = 0.5*np.sin(np.linspace(-2*np.pi, 2*np.pi, 20))
-    wave = [1 for i in range(20)]
+    wave = 0.5*np.sin(np.linspace(-2*np.pi, 2*np.pi, 20))
+    # wave = [1 for i in range(20)]
     # plt.plot(wave)
     # plt.show()
     

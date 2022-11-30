@@ -33,25 +33,7 @@ void myServoController::init_controller() {
 }
 
 void myServoController::reset_joints() {
-  float tol = 0.005; //5mm reasonable for resetting
   read_joint_positions();
-  // Temprorary method to set joints to 0 at initialization
-  /*
-  float qCmd[NUM_MOTORS] = {0.000, 0.000, 0.000, 
-                            0.000, 0.000, 0.000, 
-                            0.000, 0.000, 0.000, 
-                            0.000, 0.000, 0.000};
-  cmdPos(qCmd);
-
-  // Dont really like the bang into 0.0, add a ramp down later
-  for (int i=0; i<NUM_MOTORS; i++) {
-    _refCmd[i] = -255;
-  }
-  while (_joint_positions[0] > tol) {
-    driveController();
-    delay(50);
-  }
-  */
   float xf[NUM_MOTORS] = {0.001, 0.001, 0.001,
                           0.001, 0.001, 0.001,
                           0.001, 0.001, 0.001,
@@ -229,8 +211,9 @@ void myServoController::ramp2pos(float xf[NUM_MOTORS], float vmax, float amax) {
     x0[i] = _joint_positions[i];
   }
 
-  // Scale v such that tm is equal accross all servos
-  // Ramp time shouldn't be an issue??
+  // Scale vmax for each servo so arrival is syncrhonized
+  // Note this math is technically wrong, it ensures tm is equal, not 2*tr+tm
+  // Shouldn't really be an issue, but can be improved
   float tf_max = ramp_tf(tf, x0, xf, vmax, amax);
   for (int i=0; i<NUM_MOTORS; i++) {
     v[i] = vmax * tf[i]/tf_max;

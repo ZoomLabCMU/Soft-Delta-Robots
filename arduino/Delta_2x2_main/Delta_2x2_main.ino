@@ -55,6 +55,28 @@ int channels[NUM_MOTORS] = {0,1,0,//1st robot
                             3,2,3,//4th robot
                             };
 
+//#################################### GLOBAL VARIABLES ##################################//
+const int numChars = 3000;
+float pi = 3.1415926535;
+
+uint8_t input_cmd[numChars];
+bool newData = false;
+
+DeltaMessage message = DeltaMessage_init_zero;
+static bool recvInProgress = false;
+int ndx = 0;
+int ndxx = 0;
+char startMarker = 0xA6;
+char confMarker = '~';
+char endMarker = 0xA7;
+int marker_count = 0;
+bool skip_trajectory = false;
+
+float trajectory[20][NUM_MOTORS];
+int traj_iter = 0;
+bool go = false;
+
+
 myServoController controller(motors, adcs, channels);
 
 
@@ -78,41 +100,26 @@ void setup() {
   ADC0.setGain(GAIN_ONE);
   
   controller.init_controller();
+  init_comms();
 
+  /*
   Serial.print("q"); Serial.print('\t');
   Serial.print("qCmd"); Serial.print('\t');
   Serial.print("q_dot"); Serial.print('\t');
   Serial.println("q_dotCmd");
+  */
 }
-
-/*
-float qCmd[NUM_MOTORS] = {0.000, 0.000, 0.000,
-                          0.000, 0.000, 0.000,
-                          0.000, 0.000, 0.000,
-                          0.000, 0.000, 0.000};
-                          
-float q_dotCmd[NUM_MOTORS] = {0.000, 0.000, 0.000,
-                              0.000, 0.000, 0.000,
-                              0.000, 0.000, 0.000,
-                              0.000, 0.000, 0.000};
-*/
-
-float vmax = 20.0/1000.0; // mm/s
-float amax = 10.0/1000.0; // mm/s2
-float x0[NUM_MOTORS] = {0.005, 0.005, 0.005, 
-                        0.005, 0.005, 0.005, 
-                        0.005, 0.005, 0.005, 
-                        0.005, 0.005, 0.005};
-
-float x1[NUM_MOTORS] = {0.050, 0.040, 0.030, 
-                        0.010, 0.010, 0.010,
-                        0.050, 0.060, 0.060, 
-                        0.005, 0.005, 0.005};
 
 
 void loop() {
-  controller.ramp2pos(x0, vmax, amax);
-  delay(50);
-  controller.ramp2pos(x1, vmax, amax);
-  delay(50);
+  recvWithStartEndMarkers();
+  if (newData) {
+    if (decodeNanopbData() & !skip_trajectory) {
+        updateTrajectory();
+    }
+    newData = false;
+    ndx = 0;
+  }
+  executeWaypoints();
+  delay(10);
 }
