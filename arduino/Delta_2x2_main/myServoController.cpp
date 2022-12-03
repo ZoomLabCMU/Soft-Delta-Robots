@@ -39,6 +39,9 @@ void myServoController::reset_joints() {
                           0.001, 0.001, 0.001,
                           0.001, 0.001, 0.001};
   ramp2pos(xf, 25.0/1000.0, 12.5/1000.0);
+  for (int i=0; i<NUM_MOTORS; i++) {
+    _motors[i]->run(RELEASE);
+  }
 }
 
 void myServoController::read_joint_positions() {
@@ -166,6 +169,7 @@ void myServoController::ramp_vel(float t, float q_dotCmd[NUM_MOTORS], float x0[N
   
   for (int i=0; i<NUM_MOTORS; i++) {
     float delta_x = xf[i] - x0[i];
+    float pure_PID_tol = 0.003; // If dx is small, ref commands may cause overshoot
     if (delta_x < 0) {
       vmax = -v[i];
       amax = -amax_ref;
@@ -183,6 +187,9 @@ void myServoController::ramp_vel(float t, float q_dotCmd[NUM_MOTORS], float x0[N
     } else if (tr + tm <= t & t < 2*tr + tm) {
       q_dotCmd[i] = vmax - amax*(t-tr-tm);
     } else {
+      q_dotCmd[i] = 0.0;
+    }
+    if (abs(delta_x) < pure_PID_tol) {
       q_dotCmd[i] = 0.0;
     }
   }
@@ -246,7 +253,8 @@ void myServoController::ramp2pos(float xf[NUM_MOTORS], float vmax, float amax) {
     float q_dot = _joint_velocities[0];
     float qq_dot = q_dotCmd[0];
 
-    
+    //Serial.print(_traj_t); Serial.print('\t');
+    //Serial.print(_traj_tf); Serial.print('\t');
     Serial.print(1000*q); Serial.print('\t');
     Serial.print(1000*qq); Serial.print('\t');
     Serial.print(1000*q_dot); Serial.print('\t');

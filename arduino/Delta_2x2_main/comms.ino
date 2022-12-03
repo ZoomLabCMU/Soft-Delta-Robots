@@ -36,7 +36,7 @@ void recvWithStartEndMarkers() {
           recvInProgress = false;
           newData = true;
           ndxx = ndx - 3;
-          Serial.println(ndx);
+          //Serial.println(ndx);
           ndx = 0;
         }
       } 
@@ -73,13 +73,13 @@ bool send_done_signal(){
     data = "B\r\n";
   } */
   data = "B\r\n";
-  
+  /*
   Serial.println(data);Serial.println(data.length());
   Serial1.print("AT+CIPSEND=0,");Serial1.println(data.length());
   delay(10);
   Serial1.print(data);
   Serial1.println("AT+CIPCLOSE=0");
-
+  */
   for(int i=0; i < sizeof(input_cmd); i++){
     input_cmd[i] = (uint8_t)0;
   }

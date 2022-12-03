@@ -13,6 +13,15 @@
 #define MY_ID 15
 
 
+//######################################## Timer ###################
+#define CPU_HZ 48000000
+#define TIMER_PRESCALER_DIV 1024
+
+//void startTimer(int frequencyHz);
+//void setTimerFrequency(int frequencyHz);
+//void TC3_Handler();
+
+
 //################################## Feather MC and ADC Libraries INIT #####################3
 Adafruit_MotorShield MC0 = Adafruit_MotorShield(0x62);
 Adafruit_MotorShield MC1 = Adafruit_MotorShield(0x60);
@@ -103,18 +112,19 @@ void setup() {
   controller.init_controller();
   init_comms();
 
-  /*
+  //startTimer(20); //20 Hz -> 50ms update freq
+  
   Serial.print("q"); Serial.print('\t');
   Serial.print("qCmd"); Serial.print('\t');
   Serial.print("q_dot"); Serial.print('\t');
   Serial.println("q_dotCmd");
-  */
+  
 }
 
 float xmin = 0.005;
 float xmax = 0.095;
 
-
+long m_prev = millis();
 void loop() {
   
   recvWithStartEndMarkers();

@@ -22,6 +22,7 @@ void updateTrajectory(){
   traj_iter = 0;
   go = true;
   reset_flag = false;
+  
 }
 
 void reset() {

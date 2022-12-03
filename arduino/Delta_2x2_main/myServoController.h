@@ -52,8 +52,8 @@ private:
   // cmdPos
   void positional_PID(float PID_Cmd[NUM_MOTORS]);
   // Note these constants were determined with error in meters
-  const float _cmdPos_Kp = 20000;
-  const float _cmdPos_Ki = 100;
+  const float _cmdPos_Kp = 100000;
+  const float _cmdPos_Ki = 1000;
   const float _cmdPos_Kd = 400;
   float _cmdPos_error[NUM_MOTORS];
   float _cmdPos_integral_error[NUM_MOTORS];
