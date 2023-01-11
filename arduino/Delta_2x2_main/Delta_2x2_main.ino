@@ -10,7 +10,7 @@
 #include "myServoController.h"
 
 #define NUM_MOTORS 12 
-#define MY_ID 15
+#define MY_ID 11
 
 
 //######################################## Timer ###################
@@ -137,7 +137,7 @@ void loop() {
   }
   executeWaypoints();
   if (traj_iter >= 20 && !reset_flag) {
-    reset();
-    reset_flag = true;
+//    reset();
+//    reset_flag = true;
   }
 }

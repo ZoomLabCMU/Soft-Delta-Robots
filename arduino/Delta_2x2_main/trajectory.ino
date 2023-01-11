@@ -15,6 +15,7 @@ void executeWaypoints(){
     Serial.print(traj_iter);Serial.println(" No. of iters done! ");
     send_done_signal();
     go = false;
+    controller.stop_moving();
   }
 }
 

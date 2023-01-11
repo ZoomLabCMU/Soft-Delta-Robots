@@ -13,7 +13,7 @@ import telnetlib
 import socket
 
 # host = "192.168.1.31"
-robot_no = 15
+robot_no = 11
 port = 80
 timeout = 100
 BUFFER_SIZE = 20
@@ -36,6 +36,10 @@ def create_joint_positions(val):
     for i in range(4):
         for j in range(3):
             a.append(val[j])
+            
+    # for i in range(1,4):
+    #     for j in range(3):
+    #         a.append(0.009)
     return a
 
 def rotate(vector, angle, plot=False):
@@ -64,13 +68,16 @@ if __name__=="__main__":
         # ee_pts = list(np.array(x.split(","), dtype=float))
         
         for j in range(10):
-            ee_pts = [0,wave[j],10 + 2*wave[j]]
+            ee_pts = [wave[j],wave[j],10]
             pts = Delta.IK(ee_pts)
             pts = np.array(pts) * 0.01
             pts = np.clip(pts,0.005,0.095)
-            jts = create_joint_positions(pts)
+            jts = np.array(create_joint_positions(pts))
+            print(jts)
+            jts[:6] = 0.009
+            jts[9:] = 0.009
             _ = [delta_message.trajectory.append(jts[i]) for i in range(12)]
-        a = 0.3
+        a = 1
         for j in range(10,20):
             a *= -1
             ee_pts = [a*wave[j],0,10]

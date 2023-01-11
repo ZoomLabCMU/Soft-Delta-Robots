@@ -44,6 +44,13 @@ void myServoController::reset_joints() {
   }
 }
 
+void myServoController::stop_moving() {
+  read_joint_positions();
+  for (int i=0; i<NUM_MOTORS; i++) {
+    _motors[i]->run(RELEASE);
+  }
+}
+
 void myServoController::read_joint_positions() {
   for (int i=0; i<NUM_MOTORS; i++) {
     int ADC_val = _adcs[i]->readADC_SingleEnded(_channels[i]);

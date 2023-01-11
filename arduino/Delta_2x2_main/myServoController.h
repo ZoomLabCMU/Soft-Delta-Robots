@@ -15,6 +15,7 @@ public:
                     int channels[NUM_MOTORS]);
   void init_controller();
   void reset_joints();
+  void stop_moving();
   void cmdPos(float qCmd[]);
   void cmdVel(float q_dotCmd[]);
   void driveController();
